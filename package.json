@@ -1,0 +1,21 @@
+{
+  "name": "anaf-efactura-mcp",
+  "version": "1.0.1",
+  "description": "MCP server for Romania ANAF e-Factura — create, upload, validate, and manage electronic invoices via SPV",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "anaf-efactura-mcp": "src/index.js"
+  },
+  "keywords": ["mcp", "anaf", "efactura", "e-factura", "romania", "invoice", "spv", "ubl", "cius-ro", "factura", "fiscal", "tax", "model-context-protocol"],
+  "author": "hegetiby",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hegetiby/anaf-efactura-mcp"
+  },
+  "files": ["src/", "shared/transport.js", "shared/package.json", "LICENSE", "README.md"],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  }
+}
