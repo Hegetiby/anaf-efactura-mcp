@@ -3,3 +3,5 @@ node_modules/
 data/
 logs/
 *.log
+.backup-pre-audit/
+package-lock.json

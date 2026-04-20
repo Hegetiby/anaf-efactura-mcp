@@ -13,15 +13,14 @@ export async function connectTransport(server, opts = {}) {
   }
 
   if (mode === "sse") {
-    const { SSEServerTransport } = await import("@modelcontextprotocol/sdk/server/sse.js");
+    const { StreamableHTTPServerTransport } = await import("@modelcontextprotocol/sdk/server/streamableHttp.js");
     const port = parseInt(process.env.MCP_PORT || "3800", 10);
-    const transports = new Map();
 
     const httpServer = createServer(async (req, res) => {
       const url = new URL(req.url, `http://localhost:${port}`);
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
 
       if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
 
@@ -31,36 +30,31 @@ export async function connectTransport(server, opts = {}) {
         return;
       }
 
-      if (url.pathname === "/sse" && req.method === "GET") {
-        const transport = new SSEServerTransport("/message", res);
-        const sessionId = transport.sessionId;
-        transports.set(sessionId, transport);
-        res.on("close", () => { transports.delete(sessionId); console.error(`[${name}] Session closed: ${sessionId}`); });
-        await server.connect(transport);
-        console.error(`[${name}] SSE session: ${sessionId}`);
+      if (url.pathname === "/.well-known/mcp/server-card.json") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ name, transport: { type: "http", url: "/mcp" } }));
         return;
       }
 
-      if (url.pathname === "/message" && req.method === "POST") {
-        const sessionId = url.searchParams.get("sessionId");
-        const transport = transports.get(sessionId);
-        if (!transport) { res.writeHead(404); res.end("Session not found"); return; }
-        await transport.handlePostMessage(req, res);
+      if (url.pathname === "/mcp") {
+        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+        await server.connect(transport);
+        await transport.handleRequest(req, res);
         return;
       }
 
       if (url.pathname === "/") {
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ name, transport: "sse", endpoints: { sse: "/sse", message: "/message", health: "/health" }, active_sessions: transports.size }));
+        res.end(JSON.stringify({ name, transport: "streamable-http", endpoint: "/mcp" }));
         return;
       }
 
       res.writeHead(404); res.end("Not found");
     });
 
-    httpServer.listen(port, "0.0.0.0", () => { console.error(`[${name}] SSE on port ${port}`); });
+    httpServer.listen(port, "0.0.0.0", () => { console.error(`[${name}] Streamable HTTP on port ${port}`); });
     for (const sig of ["SIGINT", "SIGTERM"]) {
-      process.on(sig, () => { for (const t of transports.values()) t.close?.(); httpServer.close(() => process.exit(0)); });
+      process.on(sig, () => { httpServer.close(() => process.exit(0)); });
     }
     return;
   }
